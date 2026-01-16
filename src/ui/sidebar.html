@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Grabbit History</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff; /* White background */
+      color: #333;
+    }
+    header {
+      background-color: #ffffff;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid #eee;
+    }
+    .brand {
+      height: 40px;
+      display: flex;
+      align-items: center;
+    }
+    .brand img {
+      max-height: 100%;
+      max-width: 200px;
+      object-fit: contain;
+    }
+    #clear-btn {
+      background: none;
+      border: 1px solid #333; /* Black accent */
+      color: #333;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    #clear-btn:hover {
+      background-color: #333;
+      color: white;
+    }
+    #history-list {
+      padding: 15px;
+      list-style: none;
+      margin: 0;
+    }
+    .item {
+      background: #f9f9f9;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 15px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      border-color: #5ea568; /* Green hover border */
+    }
+    .method {
+      font-weight: bold;
+      font-size: 11px;
+      padding: 3px 6px;
+      border-radius: 3px;
+      display: inline-block;
+      margin-right: 8px;
+      text-transform: uppercase;
+      background-color: #333; /* Black default */
+      color: white;
+    }
+    .GET { background-color: #5ea568; } /* Green */
+    .POST { background-color: #333; }
+    .PUT { background-color: #333; }
+    .DELETE { background-color: #d9534f; }
+    
+    .highlighted-text {
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .url {
+      font-size: 12px;
+      word-break: break-all;
+      color: #777;
+      margin-top: 6px;
+      display: block;
+      font-family: monospace;
+    }
+    .meta {
+      font-size: 11px;
+      color: #bbb;
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+    }
+    .action-btn {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      background-color: white;
+      color: #333;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .action-btn:hover {
+      border-color: #5ea568;
+      color: #5ea568;
+      background-color: #f0fbf2;
+    }
+        .empty-state {
+          text-align: center;
+          padding: 60px 20px;
+          color: #aaa;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+        
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            background: white;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+        }
+        #logs-btn {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 11px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        #logs-btn:hover {
+            color: #555;
+        }
+    
+        #logs-container {
+            display: none;
+            position: fixed;
+            bottom: 40px; /* above footer */
+            left: 10px;
+            right: 10px;
+            top: 60px; /* below header */
+            background: #222;
+            color: #0f0;
+            font-family: monospace;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-y: auto;
+            font-size: 11px;
+            z-index: 200;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+        }
+        #logs-container.visible {
+            display: block;
+        }
+        .log-entry {
+            margin-bottom: 6px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 6px;
+        }
+        .log-ts { color: #666; margin-right: 5px; }
+        .log-success { color: #5ea568; }
+        .log-error { color: #ff6b6b; }
+      </style>
+    </head>
+    <body>
+      <header>
+        <div class="brand">
+          <img src="banner.png" alt="Grabbit">
+        </div>
+        <button id="clear-btn">Clear</button>
+      </header>
+      <ul id="history-list">
+        <!-- Items injected here -->
+      </ul>
+    
+      <div id="logs-container">
+          <!-- Logs injected here -->
+      </div>
+        <footer>
+            <div class="settings">
+              <label><input type="checkbox" id="include-headers"> Headers</label>
+              <label><input type="checkbox" id="include-cookies"> Cookies</label>
+            </div>
+            <button id="logs-btn">Debug Logs</button>
+        </footer>
+      
+        <style>
+          /* Additions for footer settings */
+          footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .settings {
+            display: flex;
+            gap: 10px;
+            font-size: 11px;
+            color: #666;
+          }
+          .settings label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+          }
+        </style>
+        <script src="sidebar.js"></script>
+      </body>
+      </html>    

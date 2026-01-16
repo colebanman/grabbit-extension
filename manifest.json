@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Grabbit - API Extractor",
+  "version": "1.0.0",
+  "description": "Extract the API request responsible for data on a website by highlighting it.",
+  "permissions": [
+    "contextMenus",
+    "storage",
+    "sidePanel",
+    "scripting",
+    "activeTab",
+    "clipboardWrite",
+    "cookies"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/scripts/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/scripts/content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/scripts/injected.js", "src/ui/sidebar.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "side_panel": {
+    "default_path": "src/ui/sidebar.html"
+  },
+  "action": {
+    "default_title": "Open Grabbit Sidebar",
+    "default_icon": {
+      "16": "icons/icon.jpg",
+      "32": "icons/icon.jpg",
+      "48": "icons/icon.jpg",
+      "128": "icons/icon.jpg"
+    }
+  },
+  "icons": {
+    "16": "icons/icon.jpg",
+    "32": "icons/icon.jpg",
+    "48": "icons/icon.jpg",
+    "128": "icons/icon.jpg"
+  }
+}
