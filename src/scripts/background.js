@@ -5,6 +5,12 @@ chrome.runtime.onInstalled.addListener(() => {
     title: "Grabbit: Extract API for '%s'",
     contexts: ["selection"]
   });
+
+  chrome.contextMenus.create({
+    id: "grabbit-extract-image",
+    title: "Grabbit: Extract Image Request",
+    contexts: ["image"]
+  });
 });
 
 // Helper: Generate basic JSON Schema from object
@@ -35,6 +41,15 @@ function generateCurl(req, headers = {}, cookies = []) {
   // Add Headers
   if (headers) {
     for (const [key, value] of Object.entries(headers)) {
+      const lowerKey = key.toLowerCase();
+      // Filter out cache headers and anything with "forwarded"
+      if (lowerKey === 'if-none-match' || 
+          lowerKey === 'if-modified-since' || 
+          lowerKey === 'cache-control' || 
+          lowerKey === 'pragma' || 
+          lowerKey.includes('forwarded')) {
+        continue;
+      }
       cmd += ` \\\n  -H "${key}: ${value}"`;
     }
   }
@@ -58,16 +73,19 @@ function generateCurl(req, headers = {}, cookies = []) {
 
 // Handle Context Menu Click
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "grabbit-extract") {
+  if (info.menuItemId === "grabbit-extract" || info.menuItemId === "grabbit-extract-image") {
+    const isImage = info.menuItemId === "grabbit-extract-image";
+    const action = isImage ? "FIND_IMAGE" : "FIND_API";
+    const payload = isImage ? { url: info.srcUrl } : { selection: info.selectionText };
     
     // 1. Send message to content script to find the request
     chrome.tabs.sendMessage(tab.id, {
-      action: "FIND_API",
-      selection: info.selectionText
-    }, (response) => {
+      action: action,
+      ...payload
+    }, async (response) => {
       
       if (chrome.runtime.lastError) {
-        console.error(chrome.runtime.lastError);
+        console.error("Grabbit Error:", chrome.runtime.lastError.message || chrome.runtime.lastError);
         return;
       }
 
@@ -90,20 +108,19 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         const path = urlObj.pathname;
         const origin = urlObj.origin;
 
-        // Fetch Settings & Cookies
+        // Fetch Cookies (Always record, even if settings don't include them in the initial copy)
+        let cookies = [];
+        try {
+          cookies = await chrome.cookies.getAll({ url: req.url });
+        } catch (e) {
+          console.error("Failed to fetch cookies", e);
+        }
+
+        // Fetch Settings for initial copy
         chrome.storage.local.get({ settings: { includeHeaders: false, includeCookies: false } }, async (storage) => {
              const settings = storage.settings;
-             let cookies = [];
-             
-             if (settings.includeCookies) {
-                 try {
-                     cookies = await chrome.cookies.getAll({ url: req.url });
-                 } catch (e) {
-                     console.error("Failed to fetch cookies", e);
-                 }
-             }
-
              const headersToUse = settings.includeHeaders ? req.requestHeaders : {};
+             const cookiesToUse = settings.includeCookies ? cookies : [];
 
             // Parse Request Body if possible
             let parsedRequestBody = null;
@@ -154,18 +171,22 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
               }
             };
     
-            const curl = generateCurl(req, headersToUse, cookies);
+            const curl = generateCurl(req, headersToUse, cookiesToUse);
             const clipboardText = curl;
             
-            // 3. Save to Storage
+            // 3. Save to Storage (Always save raw headers and cookies)
             const record = {
               id: Date.now(),
               url: req.url,
               method: req.method,
+              requestBody: req.requestBody, // Save raw request body for re-generating curl
               timestamp: new Date().toISOString(),
-              selection: info.selectionText,
-              curl: curl, // Still saving the generated one as default, but we store raw headers too
+              selection: isImage ? req.url : info.selectionText,
+              matchedValue: response.matchedValue || (isImage ? req.url : info.selectionText),
+              matchedPath: response.matchedPath || null,
+              curl: curl, // Default curl
               requestHeaders: req.requestHeaders, // Save raw headers
+              cookies: cookies, // Save raw cookies
               schema: schema,
               responseBody: req.responseBody
             };
