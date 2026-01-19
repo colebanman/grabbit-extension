@@ -1,6 +1,6 @@
 # Grabbit
 
-![demo](https://www.grabbit.dev/grabbit-demo-gif.gif)
+![demo](./icons/grabbit-demo-gif.gif)
 
 Grabbit is a Chrome extension for developers that reverse-engineers the API request responsible for data on a webpage.
 
