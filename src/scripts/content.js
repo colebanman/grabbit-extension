@@ -136,7 +136,8 @@ function cleanText(text) {
 
 function parseShorthand(text) {
   const clean = text.toLowerCase().replace(/[$,\s]/g, '');
-  const match = clean.match(/^([\d.]+)([kmb])$/);
+  // Look for a shorthand pattern anywhere in the cleaned text
+  const match = clean.match(/([\d.]+)([kmb])/);
   if (!match) return null;
   
   const val = parseFloat(match[1]);
