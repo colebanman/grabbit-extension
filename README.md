@@ -1,5 +1,7 @@
 # Grabbit
 
+![demo](https://www.grabbit.dev/grabbit-demo-gif.gif)
+
 Grabbit is a Chrome extension for developers that reverse-engineers the API request responsible for data on a webpage.
 
 Highlight a value on your screen—a price, a name, or an ID—and Grabbit scans the network traffic to find the exact request that delivered it. It then generates a cURL command and an OpenAPI schema, allowing you to replay or document the endpoint immediately.
