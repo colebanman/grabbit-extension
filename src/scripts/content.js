@@ -32,12 +32,23 @@ document.addEventListener('contextmenu', (e) => {
 }, true);
 
 // Listen for intercepted network requests
+function addDefaultHeader(headers, key, value) {
+  if (!value) return;
+  const lowerKey = key.toLowerCase();
+  const hasHeader = Object.keys(headers).some(existing => existing.toLowerCase() === lowerKey);
+  if (!hasHeader) {
+    headers[key] = value;
+  }
+}
+
 window.addEventListener('message', (event) => {
   if (event.source !== window || !event.data || event.data.source !== 'grabbit-interceptor') {
     return;
   }
   
   const req = event.data.payload;
+  req.requestHeaders = req.requestHeaders || {};
+  addDefaultHeader(req.requestHeaders, 'User-Agent', navigator.userAgent);
   requestBuffer.push(req);
   if (requestBuffer.length > MAX_BUFFER_SIZE) {
     requestBuffer.shift();

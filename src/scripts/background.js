@@ -34,15 +34,24 @@ function generateSchema(data) {
   }
 }
 
+function shellEscapeSingleQuotes(value) {
+  return String(value).replace(/'/g, "'\\''");
+}
+
 // Helper: Generate simple Curl
 function generateCurl(req, headers = {}, cookies = []) {
   let cmd = `curl -X ${req.method} "${req.url}"`;
+  let cookieHeaderValue = null;
   
   // Add Headers
   if (headers) {
     for (const [key, value] of Object.entries(headers)) {
       const lowerKey = key.toLowerCase();
       // Filter out cache headers and anything with "forwarded"
+      if (lowerKey === 'cookie') {
+        cookieHeaderValue = value;
+        continue;
+      }
       if (lowerKey === 'if-none-match' || 
           lowerKey === 'if-modified-since' || 
           lowerKey === 'cache-control' || 
@@ -50,21 +59,24 @@ function generateCurl(req, headers = {}, cookies = []) {
           lowerKey.includes('forwarded')) {
         continue;
       }
-      cmd += ` \\\n  -H "${key}: ${value}"`;
+      const headerValue = `${key}: ${value}`;
+      cmd += ` \\\n  -H '${shellEscapeSingleQuotes(headerValue)}'`;
     }
   }
 
   // Add Cookies
   if (cookies && cookies.length > 0) {
     const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
-    cmd += ` \\\n  -b "${cookieString}"`;
+    cmd += ` \\\n  -b '${shellEscapeSingleQuotes(cookieString)}'`;
+  } else if (cookieHeaderValue) {
+    cmd += ` \\\n  -b '${shellEscapeSingleQuotes(cookieHeaderValue)}'`;
   }
   
   if (req.requestBody) {
       // If it's an object, stringify it, else use as is
       const bodyStr = typeof req.requestBody === 'object' ? JSON.stringify(req.requestBody) : req.requestBody;
       // escape single quotes for shell safety (basic)
-      const safeBody = bodyStr.replace(/'/g, "'\\''"); 
+      const safeBody = shellEscapeSingleQuotes(bodyStr);
       cmd += ` \\\n  -d '${safeBody}'`;
   }
 
@@ -117,7 +129,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         }
 
         // Fetch Settings for initial copy
-        chrome.storage.local.get({ settings: { includeHeaders: false, includeCookies: false } }, async (storage) => {
+        chrome.storage.local.get({ settings: { includeHeaders: false, includeCookies: true } }, async (storage) => {
              const settings = storage.settings;
              const headersToUse = settings.includeHeaders ? req.requestHeaders : {};
              const cookiesToUse = settings.includeCookies ? cookies : [];

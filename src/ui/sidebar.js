@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const cookiesCheckbox = document.getElementById('include-cookies');
 
   // Load Settings
-  chrome.storage.local.get({ settings: { includeHeaders: false, includeCookies: false } }, (result) => {
+  chrome.storage.local.get({ settings: { includeHeaders: false, includeCookies: true } }, (result) => {
     headersCheckbox.checked = result.settings.includeHeaders;
     cookiesCheckbox.checked = result.settings.includeCookies;
   });
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   cookiesCheckbox.addEventListener('change', saveSettings);
 
   function render() {
-    chrome.storage.local.get({ history: [], debugLogs: [], settings: { includeHeaders: false, includeCookies: false } }, (result) => {
+    chrome.storage.local.get({ history: [], debugLogs: [], settings: { includeHeaders: false, includeCookies: true } }, (result) => {
       const settings = result.settings;
       // Render History
       list.innerHTML = '';
@@ -143,14 +143,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function shellEscapeSingleQuotes(value) {
+    return String(value).replace(/'/g, "'\\''");
+  }
+
   function generateCurl(item, headers = {}, cookies = []) {
     let cmd = `curl -X ${item.method} "${item.url}"`;
+    let cookieHeaderValue = null;
     
     // Add Headers
     if (headers) {
       for (const [key, value] of Object.entries(headers)) {
         const lowerKey = key.toLowerCase();
         // Filter out cache headers and anything with "forwarded"
+        if (lowerKey === 'cookie') {
+          cookieHeaderValue = value;
+          continue;
+        }
         if (lowerKey === 'if-none-match' || 
             lowerKey === 'if-modified-since' || 
             lowerKey === 'cache-control' || 
@@ -158,19 +167,22 @@ document.addEventListener('DOMContentLoaded', () => {
             lowerKey.includes('forwarded')) {
           continue;
         }
-        cmd += ` \\\n  -H "${key}: ${value}"`;
+        const headerValue = `${key}: ${value}`;
+        cmd += ` \\\n  -H '${shellEscapeSingleQuotes(headerValue)}'`;
       }
     }
 
     // Add Cookies
     if (cookies && cookies.length > 0) {
       const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
-      cmd += ` \\\n  -b "${cookieString}"`;
+      cmd += ` \\\n  -b '${shellEscapeSingleQuotes(cookieString)}'`;
+    } else if (cookieHeaderValue) {
+      cmd += ` \\\n  -b '${shellEscapeSingleQuotes(cookieHeaderValue)}'`;
     }
     
     if (item.requestBody) {
         const bodyStr = typeof item.requestBody === 'object' ? JSON.stringify(item.requestBody) : item.requestBody;
-        const safeBody = bodyStr.replace(/'/g, "'\\''"); 
+        const safeBody = shellEscapeSingleQuotes(bodyStr);
         cmd += ` \\\n  -d '${safeBody}'`;
     }
 
